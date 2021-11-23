@@ -26,8 +26,8 @@ app.config['device_id_to_client_id_dict'] = dict()
 @click.command()
 @click.option('--model', 'model_name', type=str, default='lr', help='Neural network used in training')
 @click.option('--dataset', 'dataset_name', type=str, default='mnist', help='Dataset used for training')
-@click.option('--data_dir', type=click.Path(exists=True, file_okay=False, path_type=Path),
-              default='./../../FedML/data/MNIST/', help='Data directory')
+@click.option('--data_dir', type=click.Path(file_okay=False, path_type=Path), default='./../../FedML/data/MNIST/',
+              help='Data directory (has to exist in clients)')
 @click.option('--partition_method', type=str, default='hetero', help='How to partition the dataset on local workers')
 @click.option('--partition_alpha', type=float, default=0.5, help='Partition alpha')
 @click.option('--client_num_in_total', type=int, default=1000, help='Number of workers in a distributed cluster')
