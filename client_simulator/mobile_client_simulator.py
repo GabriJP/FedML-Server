@@ -29,7 +29,7 @@ from FedML.fedml_api.data_preprocessing.shakespeare.data_loader import load_part
 from FedML.fedml_api.model.cv.mobilenet import mobilenet
 from FedML.fedml_api.model.cv.resnet import resnet56
 from FedML.fedml_api.model.linear.lr import LogisticRegression
-from FedML.fedml_api.model.nlp.rnn import RNN_OriginalFedAvg
+from FedML.fedml_api.model.nlp.rnn import RNNOriginalFedAvg
 
 
 def add_args(parser):
@@ -157,7 +157,7 @@ def create_model(args, model_name, output_dim):
         model = LogisticRegression(28 * 28, output_dim)
         args.client_optimizer = "sgd"
     elif model_name == "rnn" and args.dataset == "shakespeare":
-        model = RNN_OriginalFedAvg(28 * 28, output_dim)
+        model = RNNOriginalFedAvg(28 * 28, output_dim)
         args.client_optimizer = "sgd"
     elif model_name == "resnet56":
         model = resnet56(class_num=output_dim)
