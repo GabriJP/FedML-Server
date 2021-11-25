@@ -26,7 +26,7 @@ app.config['device_id_to_client_id_dict'] = dict()
 @click.command()
 @click.option('--model', 'model_name', type=str, default='lr', help='Neural network used in training')
 @click.option('--dataset', 'dataset_name', type=str, default='mnist', help='Dataset used for training')
-@click.option('--data_dir', type=click.Path(file_okay=False, path_type=Path), default='./../../FedML/data/MNIST/',
+@click.option('--data_dir', type=click.Path(path_type=Path), default='./../../FedML/data/MNIST/',
               help='Data directory (has to exist in clients)')
 @click.option('--partition_method', type=str, default='hetero', help='How to partition the dataset on local workers')
 @click.option('--partition_alpha', type=float, default=0.5, help='Partition alpha')
@@ -47,10 +47,15 @@ app.config['device_id_to_client_id_dict'] = dict()
 @click.option('--is_preprocessed', type=bool, default=False, is_flag=True, help='True if data has been preprocessed')
 @click.option('--grpc_ipconfig_path', type=click.Path(exists=True, dir_okay=False, resolve_path=True, path_type=Path),
               default=Path("../executor/grpc_ipconfig.csv"), help='config table containing ipv4 address of grpc server')
+@click.option('--communication_method', type=str, default='MQTT', help='Communication method')
+@click.option('--communication_host', type=str, default='192.168.5.100', help='Communication host')
+@click.option('--communication_port', type=int, default=1883, help='Communication port')
 def main(model_name, dataset_name, data_dir: Path, partition_method, partition_alpha, client_num_in_total,
          client_num_per_round, batch_size, client_optimizer, lr, wd, epochs, comm_round, is_mobile,
-         frequency_of_the_test, gpu_server_num, gpu_num_per_server, ci, is_preprocessed, grpc_ipconfig_path: Path):
-    # MQTT client connection
+         frequency_of_the_test, gpu_server_num, gpu_num_per_server, ci, is_preprocessed, grpc_ipconfig_path: Path,
+         communication_method, communication_host, communication_port):
+    if client_num_per_round > client_num_in_total:
+        raise ValueError(f'More clients per round than total')
 
     # quick fix for issue in MacOS environment: https://github.com/openai/spinningup/issues/16
     if sys.platform == 'darwin':
@@ -76,16 +81,20 @@ def main(model_name, dataset_name, data_dir: Path, partition_method, partition_a
     # In this case, please use our FedML distributed version (./fedml_experiments/distributed_fedavg)
     model = create_model(model_name, dataset_name, output_dim=dataset.output_len)
 
-    config = RunConfig(dataset_name, partition_alpha, client_num_in_total, client_num_per_round, None, is_mobile,
-                       gpu_server_num, gpu_num_per_server, client_optimizer, lr, wd, batch_size, epochs, comm_round,
-                       frequency_of_the_test, ci)
+    config = RunConfig(dataset_name=dataset_name, partition_alpha=partition_alpha,
+                       client_num_in_total=client_num_in_total, client_num_per_round=client_num_per_round,
+                       is_mobile=is_mobile, gpu_server_num=gpu_server_num, gpu_num_per_server=gpu_num_per_server,
+                       client_optimizer=client_optimizer, lr=lr, wd=wd, batch_size=batch_size, epochs=epochs,
+                       comm_round=comm_round, frequency_of_the_test=frequency_of_the_test, ci=ci,
+                       communication_method=communication_method, communication_host=communication_host,
+                       communication_port=communication_port)
 
     model_trainer = MyModelTrainer(model, dataset_name, client_optimizer, lr, wd, epochs)
 
     aggregator = FedAVGAggregator(device, client_num_in_total, config, dataset, model_trainer)
     size = client_num_per_round + 1
-    server_manager = FedAVGServerManager(aggregator, config, rank=0, size=size, backend="MQTT",
-                                         is_preprocessed=is_preprocessed, grpc_ipconfig_path=grpc_ipconfig_path)
+    server_manager = FedAVGServerManager(aggregator, config, rank=0, size=size, is_preprocessed=is_preprocessed,
+                                         grpc_ipconfig_path=grpc_ipconfig_path)
     server_manager.run()
 
     # if run in debug mode, process will be single threaded by default
@@ -95,6 +104,9 @@ def main(model_name, dataset_name, data_dir: Path, partition_method, partition_a
     app.config['partition_method'] = partition_method
     app.config['is_preprocessed'] = is_preprocessed
     app.config['grpc_ipconfig_path'] = str(grpc_ipconfig_path)
+    app.config['communication_method'] = communication_method
+    app.config['communication_host'] = communication_host
+    app.config['communication_port'] = communication_port
     app.run(host='0.0.0.0', port=5000)
 
 
@@ -142,7 +154,10 @@ def register_device():
         is_mobile=config.is_mobile,
         dataset_url=f'{request.url_root}/get-preprocessed-data/{client_id - 1}',
         is_preprocessed=app.config['is_preprocessed'],
-        grpc_ipconfig_path=app.config['grpc_ipconfig_path']
+        grpc_ipconfig_path=app.config['grpc_ipconfig_path'],
+        communication_method=app.config['communication_method'],
+        communication_host=app.config['communication_host'],
+        communication_port=app.config['communication_port'],
     )
 
     return jsonify(dict(errno=0, executorId="executorId", executorTopic="executorTopic", client_id=client_id,
