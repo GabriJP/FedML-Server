@@ -17,6 +17,8 @@ from fedml_api.data_preprocessing import MNISTDataLoader, ShakespeareDataLoader,
     Cifar100DatasetLoader, Cinic10DatasetLoader
 from fedml_core import RunConfig
 
+logging.basicConfig(level=logging.DEBUG)
+
 # HTTP server
 app = Flask(__name__)
 app.config['MOBILE_PREPROCESSED_DATASETS'] = './preprocessed_dataset/'
@@ -112,14 +114,14 @@ def main(model_name, dataset_name, data_dir: Path, partition_method, partition_a
 
 @app.route('/', methods=['GET'])
 def index():
-    return 'backend service for Fed_mobile'
+    return 'Backend service for Fed_mobile'
 
 
 @app.route('/get-preprocessed-data/<dataset_name>', methods=['GET'])
 def get_preprocessed_data(dataset_name):
     directory = f'{app.config["MOBILE_PREPROCESSED_DATASETS"]}{dataset_name.upper()}_mobile_zip/'
     try:
-        return send_from_directory(directory, filename=dataset_name + '.zip', as_attachment=True)
+        return send_from_directory(directory, filename=f'{dataset_name}.zip', as_attachment=True)
     except FileNotFoundError:
         abort(404)
 
