@@ -203,7 +203,7 @@ def create_model(model_name, dataset_name, output_dim):
     elif model_name == "mobilenet":
         model = mobilenet(class_num=output_dim)
     else:
-        model = None
+        raise ValueError(f'Unknown model combination for {model_name} and {dataset_name}')
     return model
 
 
